@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Eeyou Istchee Food Initiatives Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet & MarkerCluster CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+  />
+
+  <!-- Choices.js for nice multi-select dropdowns -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"
+  />
+
+  <!--Load worksans font-->
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+
+  <style>
+    /* ======== BASIC PAGE LAYOUT ======== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Work Sans', sans-serif;
+    }
+    
+    /* ==== Leaflet Font to worksans === */
+    .leaflet-popup-content {
+    font-family: 'Work Sans', sans-serif;
+    font-size: 14px;
+    overflow: hidden !important;
+    padding: 8px !important;
+    }
+
+    /* Make popup content scrollable beyond 80% of viewport height */
+    .leaflet-popup-content-wrapper {
+        max-height: 80vh; /* 80% of viewport height */
+        overflow-y: auto; /* scroll if needed */
+    }
+
+    /* Optional: scrollbar style */
+    .leaflet-popup-content-wrapper::-webkit-scrollbar {
+         width: 6px;
+    }
+    .leaflet-popup-content-wrapper::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.25);
+        border-radius: 3px;
+    }
+
+    /* Sidebar and map side by side */
+    #container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* Top 10%: map title */
+    /* Map title overlay */
+    #mapTitle {
+        height: 10%;
+        width: 100%;
+        background: #27855880;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        box-sizing: border-box;
+        gap: 10px; /* space between logos and titles */
+        border-bottom: 2px solid #278558; /* line under the title section */
+    }
+
+    /* Both images scale proportionally */
+    #mapTitle img {
+        max-height: 80%; /* adjust maximum height */
+        max-width: 20%; /* adjust maximum height */
+        width: auto;       /* maintain aspect ratio */
+        display: block;
+    }
+    /* Titles next to logos */
+    #mapTitle .titles {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    #mapTitle .titles h1 {
+        margin: 0;
+        font-size: clamp(1vw, 5vh, 3vw); /* 5% of viewport height (fits the 10% header nicely) */
+    }
+
+    #mapTitle .titles h3 {
+        margin: 0;
+        font-size: clamp(1vw, 2vh, 3vw); /* 5% of viewport height (fits the 10% header nicely) */
+        font-weight: normal;
+        color: #333;
+    }
+
+    /* Bottom 90%: sidebar + map */
+    #bottomSection {
+        position: relative;
+        display: flex;
+        height: 90%;
+    }
+
+    /* Sidebar on left */
+    #sidebar {
+        position: absolute; /* needed for left property */
+        top: 0;
+        left: 0;
+        width: 25%;
+        min-width: 280px;
+        height: 100%;
+        overflow-y: auto;
+        background: #27855880;
+        border-right: 2px solid #278558;
+        padding: 10px;
+        box-sizing: border-box;
+        z-index: 900;
+        transition: z-index 0.3s ease;
+    }
+
+    /* Map on right */
+    #map {
+        position: absolute;      /* fill bottomSection */
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 800;            /* default: below sidebar */
+    }
+
+    /* Zoom function on right */
+    .leaflet-top.leaflet-left {
+     left: auto;
+     right: 10px;
+    }
+
+    /* The toggle button (top-left of the bottom section) */
+    .toggle-btn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: #278558;
+        color: white;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        z-index: 1001; /* sits above the map */
+    }
+
+   .toggle-btn:hover {
+    background: #005a4f;
+    }
+
+    /* Sidebar elements */
+    .filter-box { margin-bottom: 10px; }
+
+    .item {
+      padding: 6px;
+      border-bottom: 1px solid #ddd;
+      cursor: pointer;
+    }
+    .item:hover { background: #278558; }
+
+
+    /* Search input style */
+    .search-box {
+      width: 90%;
+      padding: 8px;
+      margin-bottom: 8px;
+      margin-top: 50px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    /* Reset button styling */
+    .reset-btn {
+      display: inline-block;
+      margin-bottom: 10px;
+      background: #278558;
+      color: white;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .reset-btn:hover { background: #0d3220; }
+  </style>
+</head>
+
+
+<body>
+
+<div id="container">
+  <!-- HEADER: LOGOS + TITLES -->
+    <div id="mapTitle">
+        <img src="https://www.cngov.ca/wp-content/uploads/2021/08/logogcccngemblem_cmyk_tl.png" alt="Grand Council of the Crees (Eeyou Istchee), Cree Nation Government Logo" />
+        <img src="https://www.cngov.ca/wp-content/uploads/2018/03/tagline-horizontal.png" alt="Tagline" />
+          <!-- Titles -->
+        <div class="titles">
+            <h1>Food Security Initiatives in Eeyou Istchee</h1>
+            <h3>Environment and Remedial Works Department</h3>
+        </div>
+    </div>
+
+    <!-- This is the section with the sidebar and the map-->
+    <div id="bottomSection">
+        <button id="toggleSidebarBtn" class="toggle-btn">Hide sidebar</button>
+        <div id="sidebar">
+                <!-- Search box -->
+                <input type="text" id="search" class="search-box" placeholder="Search by title, org, or community...">
+
+                <!-- Filter dropdowns -->
+                <div class="filter-box">
+                <select id="filterCommunity" multiple></select>
+                </div>
+                <div class="filter-box">
+                <select id="filterOrg" multiple></select>
+                </div>
+                <div class="filter-box">
+                <select id="filterTopic" multiple></select>
+                </div>
+                <div class="filter-box">
+                <select id="filterTitle" multiple></select>
+                </div>
+
+                <!-- Reset View button -->
+                <button class="reset-btn" id="resetAll">Reset</button>
+
+                <!-- List of visible initiatives -->
+                <div id="list"></div>
+        </div>
+
+        <!-- ========== MAP ========== -->
+        <div id="map"></div>
+    </div>
+
+</div>
+
+<!-- JS Libraries -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+/* ===================== CONFIG ===================== */
+const GEOJSON_FILE = "Food_Security_Initiatives.geojson"; // Local file path
+const COMMUNITY_OUTLINE = "Community_Extent.geojson"; // Local file path
+const MAP_START = { lat: 53.5, lng: -78.5, zoom: 6 };     // Eeyou Istchee area
+/* ===================== END CONFIG ===================== */
+
+let allFeatures = [];
+let filteredFeatures = []; // will store the latest filtered set
+let markers = L.markerClusterGroup();
+let map = L.map("map").setView([MAP_START.lat, MAP_START.lng], MAP_START.zoom);
+
+/* Base map tiles */
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "&copy; OpenStreetMap contributors"
+}).addTo(map);
+
+/*  ===========LOAD COMMUNITY OUTLINE (WITH HOVER TOOLTIPS)============ */
+
+fetch(COMMUNITY_OUTLINE)
+  .then(res => res.json())
+  .then(data => {
+    // Make sure property name matches exactly what's in your file
+    const filteredFeatures = data.features.filter(
+      f => f.properties.COMMUNITY && f.properties.COMMUNITY !== "Eeyou Istchee"
+    );
+
+    const filteredData = { ...data, features: filteredFeatures };
+
+    window.communityOutlineLayer = L.geoJSON(filteredData, {
+      style: {
+        color: "#777",
+        weight: 1.5,
+        fillOpacity: 0
+      },
+      onEachFeature: (feature, layer) => {
+        const name = feature.properties.COMMUNITY || "Unnamed";
+
+        // Tooltip on hover
+        layer.bindTooltip(name, {
+          sticky: true,
+          direction: "center",
+          className: "community-tooltip"
+        });
+
+        layer.on("mouseover", function () {
+          layer.setStyle({
+            weight: 3,
+            color: "#444"
+          });
+        });
+
+        layer.on("mouseout", function () {
+          layer.setStyle({
+            weight: 1.5,
+            color: "#777"
+          });
+        });
+      }
+    }).addTo(map);
+  })
+  .catch(err => console.error("Error loading community outline:", err));
+
+/* ========== Load the local GeoJSON file ========== */
+async function fetchFeatures() {
+  const resp = await fetch(GEOJSON_FILE);
+  if (!resp.ok) throw new Error("Failed to load GeoJSON");
+  const geojson = await resp.json();
+
+  // Add geometry if missing (using CoordinatesX/Y)
+  geojson.features.forEach((f, idx) => {
+    if (!f.geometry && f.properties.CoordinatesX && f.properties.CoordinatesY) {
+      f.geometry = {
+        type: "Point",
+        coordinates: [
+          parseFloat(f.properties.CoordinatesX),
+          parseFloat(f.properties.CoordinatesY)
+        ]
+      };
+    }
+    f.id = f.id || idx;
+  });
+  return geojson.features;
+}  
+   
+/* ========== Create popup HTML for each initiative ========== */
+function makePopupContent(p) {
+  const img = p.URL_Logo_Image ? `<img src="${p.URL_Logo_Image}" style="max-width:100%;border-radius:6px;">` : "";
+  const contact = [p.Contact, p.Email, p.Phone].filter(Boolean).join("<br>");
+  const link = p.Links ? `<p><a href="${p.Links}" target="_blank">More info</a></p>` : "";
+  return `
+    <div style="min-width:200px"; max-width: 300px>
+      <div style="max-height:80hv; overflow-y:auto;">
+      <h3>${p.Title || "Untitled"}</h3>
+      <p><strong>Organization:</strong> ${p.Affiliation || "N/A"}</p>
+      <p><strong>Community:</strong> ${p.Community || "N/A"}</p>
+      <p><strong>Topic:</strong> ${p.Topic || "N/A"}</p>
+      <p>${p.Description || ""}</p>
+      ${img}
+      <p><strong>Contact:</strong><br>${contact}</p>
+      ${link}
+    </div>
+  `;
+}
+
+/* ========== Populate dropdowns using Choices.js ========== */
+function populateDropdowns(features) {
+  const communities = new Set();
+  const orgs = new Set();
+  const topics = new Set();
+  const titles = new Set();
+
+  features.forEach(f => {
+    const p = f.properties;
+    if (p.Community) communities.add(p.Community);
+    if (p.Affiliation) orgs.add(p.Affiliation);
+    if (p.Topic) topics.add(p.Topic);
+    if (p.Title) titles.add(p.Title);
+  });
+
+  // Helper to initialize Choices.js dropdowns
+  function initChoices(id, items, placeholder) {
+    const select = document.getElementById(id);
+    select.innerHTML = "";
+    items.forEach(i => {
+      const opt = document.createElement("option");
+      opt.value = opt.textContent = i;
+      select.appendChild(opt);
+    });
+    return new Choices(select, {
+      removeItemButton: true,
+      placeholderValue: placeholder,
+      searchPlaceholderValue: "Type to search..."
+    });
+  }
+
+  window.communityChoices = initChoices("filterCommunity", communities, "Filter by Community");
+  window.orgChoices = initChoices("filterOrg", orgs, "Filter by Organization");
+  window.topicChoices = initChoices("filterTopic", topics, "Filter by Topic");
+  window.titleChoices = initChoices("filterTitle", titles, "Filter by Initiative Name");
+}
+
+/* ========== Render sidebar with visible features ========== */
+function renderSidebar(features) {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  features.forEach(f => {
+    const p = f.properties;
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = `<strong>${p.Title || "Untitled"}</strong><br>
+                     <small>${p.Affiliation || ""} — ${p.Community || ""}</small>`;
+    div.onclick = () => {
+      const [lng, lat] = f.geometry.coordinates;
+      map.setView([lat, lng], 12);
+      L.popup().setLatLng([lat, lng]).setContent(makePopupContent(p)).openOn(map);
+    };
+    list.appendChild(div);
+  });
+}
+
+/* ========== Filter logic ========== */
+function applyFilters() {
+  try {
+    const searchEl = document.getElementById("search");
+    const search = searchEl ? searchEl.value.trim().toLowerCase() : "";
+
+    // Get selected values from Choices (guard if they don't exist)
+    const selectedCommunities = window.communityChoices ? communityChoices.getValue(true) : [];
+    const selectedOrgs = window.orgChoices ? orgChoices.getValue(true) : [];
+    const selectedTopics = window.topicChoices ? topicChoices.getValue(true) : [];
+    const selectedTitles = window.titleChoices ? titleChoices.getValue(true) : [];
+
+    // Filter allFeatures according to search + selections
+    filteredFeatures = allFeatures.filter(f => {
+      const p = f.properties || {};
+
+      // text search: if empty => match
+      const matchesSearch = !search ||
+        (p.Title && p.Title.toLowerCase().includes(search)) ||
+        (p.Affiliation && p.Affiliation.toLowerCase().includes(search)) ||
+        (p.Community && p.Community.toLowerCase().includes(search));
+
+      const matchesCommunity = !selectedCommunities.length || selectedCommunities.includes(p.Community);
+      const matchesOrg = !selectedOrgs.length || selectedOrgs.includes(p.Affiliation);
+      const matchesTopic = !selectedTopics.length || selectedTopics.includes(p.Topic);
+      const matchesTitle = !selectedTitles.length || selectedTitles.includes(p.Title);
+
+      return matchesSearch && matchesCommunity && matchesOrg && matchesTopic && matchesTitle;
+    });
+
+    // Update markers: clear and add filtered markers
+    markers.clearLayers();
+    filteredFeatures.forEach(f => {
+      if (!f.geometry || !Array.isArray(f.geometry.coordinates)) return;
+      const [lng, lat] = f.geometry.coordinates;
+      const marker = L.marker([lat, lng]).bindPopup(makePopupContent(f.properties));
+      markers.addLayer(marker);
+    });
+
+    // Ensure marker cluster layer is on the map
+    if (!map.hasLayer(markers)) map.addLayer(markers);
+
+
+    // Render sidebar based on **filtered features in current map bounds**
+    const visibleInView = getFeaturesInView(filteredFeatures);
+    renderSidebar(visibleInView);
+
+  } catch (err) {
+    // If anything goes wrong, log it so we can see the error in console
+    console.error("applyFilters error:", err);
+  }
+}
+
+/* ========== Helper: get features in current map view ========== */
+function getFeaturesInView(features) {
+  const bounds = map.getBounds();
+  return features.filter(f => {
+    if (!f.geometry || !Array.isArray(f.geometry.coordinates)) return false;
+    const [lng, lat] = f.geometry.coordinates;
+    return bounds.contains([lat, lng]);
+  });
+}
+
+/* ========== Update sidebar only ========== */
+function updateSidebar() {
+  const visibleFeatures = getFeaturesInView(filteredFeatures); // allFeatures = your marker dataset
+  renderSidebar(visibleFeatures); // your function that updates the sidebar
+}
+
+/* ========== Update sidebar when map is moved or zoomed ========== */
+map.on("moveend", () => {
+  updateSidebar(); // ONLY update sidebar, do not touch markers or popups
+});
+
+/* ========== RESET ALL FILTERS, SEARCH, AND MAP VIEW ========== */
+document.getElementById("resetAll").addEventListener("click", () => {
+  try {
+    // Reset map view
+    map.setView([MAP_START.lat, MAP_START.lng], MAP_START.zoom);
+
+    // Clear search input
+    const s = document.getElementById("search");
+    if (s) s.value = "";
+
+    // Clear Choices.js selections (guarded)
+    if (window.communityChoices) communityChoices.removeActiveItems();
+    if (window.orgChoices) orgChoices.removeActiveItems();
+    if (window.topicChoices) topicChoices.removeActiveItems();
+    if (window.titleChoices) titleChoices.removeActiveItems();
+
+    // Re-run filter pipeline (will repopulate markers and sidebar)
+    applyFilters();
+  } catch (err) {
+    console.error("resetAll error:", err);
+  }
+});
+
+
+/* Search input listener */
+document.getElementById("search").addEventListener("input", applyFilters);
+
+/* ========== MAIN INITIALIZATION ========== */
+(async () => {
+  try {
+    allFeatures = await fetchFeatures();
+    filteredFeatures = allFeatures.slice();  //Initialize filteredFeatures to all features
+    populateDropdowns(allFeatures);
+
+    // search input
+    const searchInput = document.getElementById("search");
+    if (searchInput) searchInput.addEventListener("input", applyFilters);
+
+    // listen for Choices change via the <select> 'change' events (Choices triggers native change)
+    ["filterCommunity","filterOrg","filterTopic","filterTitle"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", applyFilters);
+    });
+
+    // Add initial markers
+    allFeatures.forEach(f => {
+      if (f.geometry) {
+        const [lng, lat] = f.geometry.coordinates;
+        const marker = L.marker([lat, lng]).bindPopup(makePopupContent(f.properties));
+        markers.addLayer(marker);
+      }
+    });
+
+    map.addLayer(markers);
+    renderSidebar(allFeatures);
+
+    // Listen for filter changes
+    ["filterCommunity", "filterOrg", "filterTopic", "filterTitle"].forEach(id => {
+      document.getElementById(id).addEventListener("change", applyFilters);
+    });
+
+  } catch (err) {
+    console.error(err);
+    alert("Error loading features. See console for details.");
+  }
+})();
+    const sidebar = document.getElementById("sidebar");
+    const toggleSidebarBtn = document.getElementById("toggleSidebarBtn");
+
+    toggleSidebarBtn.addEventListener("click", () => {
+    const isHidden = sidebar.style.zIndex == "500"; // same as map
+    sidebar.style.zIndex = isHidden ? "1000" : "500"; // in front or behind
+    toggleSidebarBtn.textContent = isHidden ? "Hide sidebar" : "Show sidebar";
+});
+
+</script>
+
+</body>
+</html>
