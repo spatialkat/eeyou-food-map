@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Eeyou Istchee Food Initiatives Map</title>
+  <title>Eeyou Istchee Food Security Initiatives Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Leaflet & MarkerCluster CSS -->
@@ -201,6 +201,127 @@
       cursor: pointer;
     }
     .reset-btn:hover { background: #0d3220; }
+
+    /* ====== INFO BUTTON (below zoom controls) ====== */
+    .info-btn {
+      position: absolute;
+      top: 77px; /* sits just below the zoom +/- controls */
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      border: 2px solid rgba(0,0,0,0.25);
+      border-radius: 4px;
+      width: 30px;
+      height: 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Work Sans', sans-serif;
+      color: #278558;
+    }
+    .info-btn:hover {
+      background: #f0f0f0;
+    }
+
+   /* ====== EDIT/CONTRIBUTE BUTTON (below info button) ====== */
+    .edit-btn {
+      position: absolute;
+      top: 112px; /* sits just below the info button (74px + 30px + 8px gap) */
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      border: 2px solid rgba(0,0,0,0.25);
+      border-radius: 4px;
+      width: 30px;
+      height: 30px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Work Sans', sans-serif;
+      color: #278558;
+      text-decoration: none; /* since it's an <a> tag */
+    }
+    .edit-btn:hover {
+      background: #f0f0f0;
+    }
+
+    /* ====== MODAL OVERLAY ====== */
+    #infoModal {
+      display: none; /* hidden by default, shown on load and on button click */
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); /* darkened background */
+      z-index: 2000;
+      align-items: center;
+      justify-content: center;
+    }
+    #infoModal.open {
+      display: flex;
+    }
+    #infoModalBox {
+      background: white;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 620px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+      font-family: 'Work Sans', sans-serif;
+    }
+    #infoModalBox h2 {
+      margin-top: 0;
+      color: #278558;
+    }
+    #infoModalBox h3 {
+      color: #278558;
+      margin-top: 1.2em;
+      margin-bottom: 0.3em;
+      font-size: 1rem;
+    }
+    #infoModalBox p, #infoModalBox li {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: #333;
+    }
+    .modal-close-btn {
+      position: absolute;
+      top: 12px; right: 16px;
+      background: none;
+      border: none;
+      font-size: 1.4rem;
+      cursor: pointer;
+      color: #555;
+    }
+    .modal-close-btn:hover { color: #000; }
+
+    /* Legend table inside modal */
+    .legend-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 0.85rem;
+    }
+    .legend-table th {
+      background: #278558;
+      color: white;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    .legend-table td {
+      padding: 5px 10px;
+      border-bottom: 1px solid #eee;
+      vertical-align: top;
+    }
+    .legend-table tr:last-child td { border-bottom: none; }
+    .legend-table tr:nth-child(even) td { background: #f7f7f7; }
+
   </style>
 </head>
 
@@ -215,7 +336,7 @@
           <!-- Titles -->
         <div class="titles">
             <h1>Food Security Initiatives in Eeyou Istchee</h1>
-            <h3>Environment and Remedial Works Department</h3>
+            <h3>Department of Environment and Wildlife</h3>
         </div>
     </div>
 
@@ -234,7 +355,10 @@
                 <select id="filterOrg" multiple></select>
                 </div>
                 <div class="filter-box">
-                <select id="filterTopic" multiple></select>
+                <select id="filterFoodSource" multiple></select>
+                </div>
+                <div class="filter-box">
+                <select id="filterInitiativeType" multiple></select>
                 </div>
                 <div class="filter-box">
                 <select id="filterTitle" multiple></select>
@@ -245,6 +369,61 @@
 
                 <!-- List of visible initiatives -->
                 <div id="list"></div>
+        </div>
+
+        <!-- ====== INFO BUTTON ====== -->
+        <button class="info-btn" id="infoBtn" title="About this map">ⓘ</button>
+
+        <!-- ====== CONTRIBUTE/EDIT BUTTON ====== -->
+        <a class="edit-btn" href="https://forms.gle/praZXSPr18NjkWXX7" target="_blank" title="Contribute or edit an initiative">✏️</a>
+
+        <!-- ====== INFO MODAL ====== -->
+        <div id="infoModal">
+          <div id="infoModalBox">
+            <button class="modal-close-btn" id="infoModalClose">✕</button>
+
+            <h2>Food Security Initiatives in Eeyou Istchee</h2>
+            <p><em> Department of Environment and Wildlife — Cree Nation Government</em></p>
+
+            <h3>📋 About this map</h3>
+            <p>This map compiles food security initiatives across Eeyou Istchee. It brings together programs, projects, and organizations that support access to food, food production and knowledge related to <strong>traditional foods</strong>, nutritious <strong>store-bought foods</strong>, and <strong>community-produced foods</strong>.</p>
+
+            <h3>🎯 Goal</h3>
+            <p>To provide a comprehensive, centralized reference of food-related initiatives across Eeyou Istchee. To support coordination, planning, and decision-making for communities, organizations, and partners.</p>
+            <p>This map was produced by the Cree Nation Government Climate Change Unit to better understand <strong>climate change impacts on food security</strong>. By mapping existing initiatives, it helps identify strengths and gaps, and can inform <strong>climate adaptation strategies</strong>.</p>
+
+            <h3>👥 Who should use this map</h3>
+            <p>Community members, band council staff, researchers, government partners, and <strong>anyone interested</strong> in understanding the landscape of food security efforts in Eeyou Istchee.</p>
+            <p>While it supports climate change adaptation planning, it can also be used more broadly for program development, collaboration, and knowledge sharing.</p>
+
+            <h3>🗺️ How to use</h3>
+            <p>Use the <strong>sidebar filters</strong> on the left to narrow initiatives by community, organization, food source, or initiative type. Use the <strong>search bar</strong> to find specific initiatives by name. Click any <strong>marker on the map</strong> or any <strong>entry in the sidebar list</strong> to see full details. The list updates automatically as you pan or zoom the map.</p>
+
+            <h3>✏️ How to contribute</h3>
+            <p>Know of an initiative that's missing, or noticed something that needs updating? Use the <strong><a href="https://forms.gle/praZXSPr18NjkWXX7" target="_blank">contribution form</a></strong> to submit a new initiative or suggest a correction. You can also access the form at any time using the <strong>✏️ button</strong> below the info button on the map.</p>
+
+            <h3>📖 Legend</h3>
+
+            <!-- <p><strong>Food Source</strong> — Where does the food come from? </p> -->
+            <table class="legend-table">
+              <tr><th>Food Source</th><th>Where does the food come from?</th></tr>
+              <tr><td>Traditional Foods</td><td>Hunting, fishing, trapping, and gathering of traditional Cree foods</td></tr>
+              <tr><td>Store-Bought Food</td><td>Initiatives focused on market or commercial food. Many of these initiatives are linked with health and nutrition</td></tr>
+              <tr><td>Community-Produced Foods</td><td>Gardening, greenhouses, and locally grown produce</td></tr>
+            </table>
+
+            <br>
+            <!-- <p><strong>Initiative Type</strong> — The nature or approach of the initiative:</p>-->
+            <table class="legend-table">
+              <tr><th>Initiative Type</th><th>How does it contribute to food security?</th></tr>
+              <tr><td>Direct Provision</td><td>Food is directly given or served. (ex: Meals, snacks, food baskets, emergency or regular distribution)</td></tr>
+              <tr><td>Access to the Land</td><td>Facilitates access to the land, reduces barriers to getting food. (ex: Transportation subsidies, programs enabling hunting/fishing or income support)</td></tr>
+              <tr><td>Education and Culture</td><td>Builds capacity to use food. (ex: Training, workshops or events on cooking, nutrition, harvesting, and processing, or cultural teachings)</td></tr>
+              <tr><td>Food Production & Harvesting</td><td>Increases supplies of food (ex:  Greenhouses, community hunts, harvesting initiatives)</td></tr>
+              <tr><td>System & Infrastructure Development</td><td>Strengthening the underlying food systems, coordination, and infrastructure. (ex: Research, mapping, coordination or supply chain development)</td></tr>
+            </table>
+
+          </div>
         </div>
 
         <!-- ========== MAP ========== -->
@@ -260,7 +439,7 @@
 
 <script>
 /* ===================== CONFIG ===================== */
-const GEOJSON_FILE = "Food_Security_Initiatives.geojson"; // Local file path
+const GEOJSON_FILE = "Food_Security_Initiatives_Clean.geojson"; // Local file path
 const COMMUNITY_OUTLINE = "Community_Extent.geojson"; // Local file path
 const MAP_START = { lat: 53.5, lng: -78.5, zoom: 6 };     // Eeyou Istchee area
 /* ===================== END CONFIG ===================== */
@@ -281,11 +460,11 @@ fetch(COMMUNITY_OUTLINE)
   .then(res => res.json())
   .then(data => {
     // Make sure property name matches exactly what's in your file
-    const filteredFeatures = data.features.filter(
+    const outlineFeatures = data.features.filter(
       f => f.properties.COMMUNITY && f.properties.COMMUNITY !== "Eeyou Istchee"
     );
 
-    const filteredData = { ...data, features: filteredFeatures };
+    const filteredData = { ...data, features: outlineFeatures };
 
     window.communityOutlineLayer = L.geoJSON(filteredData, {
       style: {
@@ -339,26 +518,65 @@ async function fetchFeatures() {
       };
     }
     f.id = f.id || idx;
+
+    // Validate geometry once at load time (not on every filter call)
+    if (
+      !f.geometry ||
+      !Array.isArray(f.geometry.coordinates) ||
+      f.geometry.coordinates.length < 2 ||
+      isNaN(f.geometry.coordinates[0]) ||
+      isNaN(f.geometry.coordinates[1])
+    ) {
+      console.warn("⚠️ Invalid feature:", f);
+    }
   });
   return geojson.features;
 }  
+
+/* ========== Helper to split comma-separated values ========== */
+function splitValues(val) {
+  if (!val) return [];
+  return val.split(",").map(v => v.trim()).filter(Boolean);
+}
    
 /* ========== Create popup HTML for each initiative ========== */
 function makePopupContent(p) {
-  const img = p.URL_Logo_Image ? `<img src="${p.URL_Logo_Image}" style="max-width:100%;border-radius:6px;">` : "";
-  const contact = [p.Contact, p.Email, p.Phone].filter(Boolean).join("<br>");
-  const link = p.Links ? `<p><a href="${p.Links}" target="_blank">More info</a></p>` : "";
+  const img = p.URL_Logo_Image
+    ? `<img src="${p.URL_Logo_Image}" style="max-width:100%;border-radius:6px;margin-top:6px;"
+        onerror="this.style.display='none';">`
+    : "";
+
+    // Process the Links field if it exists
+  let linksHTML = "";
+  if (p.Links) {
+    // Split by semicolon to get multiple links
+    linksHTML = p.Links.split(";").map(line => {
+      const [desc, url] = line.split(": ").map(s => s.trim());
+      if (!desc || !url) return "";
+      return `<div><a href="${url}" target="_blank">${desc}</a></div>`;
+    }).join("");
+  }
+
   return `
-    <div style="min-width:200px"; max-width: 300px>
-      <div style="max-height:80hv; overflow-y:auto;">
-      <h3>${p.Title || "Untitled"}</h3>
-      <p><strong>Organization:</strong> ${p.Affiliation || "N/A"}</p>
-      <p><strong>Community:</strong> ${p.Community || "N/A"}</p>
-      <p><strong>Topic:</strong> ${p.Topic || "N/A"}</p>
-      <p>${p.Description || ""}</p>
-      ${img}
-      <p><strong>Contact:</strong><br>${contact}</p>
-      ${link}
+    <div style="min-width:200px; max-width: 300px;">
+        <h3>${p.Title || "Untitled"}</h3>
+        <div style="line-height:1.1; margin-bottom: 0.8em;">
+          ${p.Affiliation ? `<div><strong>Organization:</strong> ${p.Affiliation}</div>` : ""}
+          ${p.Location ? `<div><strong>Community:</strong> ${p.Location}</div>` : ""}
+          ${p.Food_Source ? `<div><strong>Food Source:</strong> ${p.Food_Source}</div>` : ""}
+          ${p.Initiative_Type ? `<div><strong>Initiative Type:</strong> ${p.Initiative_Type}</div>` : ""}
+        </div>
+        ${p.Description ? `<p>${p.Description}</p>` : ""}
+
+        <div style="line-height:1.1; margin-bottom: 0.8em;">
+        ${p.Contact ? `<div><strong>Contact:</strong><br>${p.Contact}</div>` : ""}
+        ${p.Email ? `<div><strong>Email:</strong> ${p.Email}</div>` : ""}
+        ${p.Phone ? `<div><strong>Phone:</strong> ${p.Phone}</div>` : ""}
+        </div>
+
+        ${linksHTML ? `<div style="margin-bottom:8px;">${linksHTML}</div>` : ""}        
+        ${img}
+      </div>
     </div>
   `;
 }
@@ -367,14 +585,16 @@ function makePopupContent(p) {
 function populateDropdowns(features) {
   const communities = new Set();
   const orgs = new Set();
-  const topics = new Set();
+  const foodSources = new Set();
+  const initiativeTypes = new Set();
   const titles = new Set();
 
   features.forEach(f => {
     const p = f.properties;
-    if (p.Community) communities.add(p.Community);
-    if (p.Affiliation) orgs.add(p.Affiliation);
-    if (p.Topic) topics.add(p.Topic);
+    if (p.Location) communities.add(p.Location);
+    splitValues(p.Affiliation).forEach(v => orgs.add(v));
+    splitValues(p.Food_Source).forEach(v => foodSources.add(v));
+    splitValues(p.Initiative_Type).forEach(v => initiativeTypes.add(v));
     if (p.Title) titles.add(p.Title);
   });
 
@@ -396,7 +616,8 @@ function populateDropdowns(features) {
 
   window.communityChoices = initChoices("filterCommunity", communities, "Filter by Community");
   window.orgChoices = initChoices("filterOrg", orgs, "Filter by Organization");
-  window.topicChoices = initChoices("filterTopic", topics, "Filter by Topic");
+  window.foodSourceChoices = initChoices("filterFoodSource", foodSources, "Filter by Food Source");
+  window.initiativeTypeChoices = initChoices("filterInitiativeType", initiativeTypes, "Filter by Initiative Type");
   window.titleChoices = initChoices("filterTitle", titles, "Filter by Initiative Name");
 }
 
@@ -409,12 +630,22 @@ function renderSidebar(features) {
     const div = document.createElement("div");
     div.className = "item";
     div.innerHTML = `<strong>${p.Title || "Untitled"}</strong><br>
-                     <small>${p.Affiliation || ""} — ${p.Community || ""}</small>`;
+                     <small>${p.Affiliation || ""} — ${p.Location || ""}</small>`;
     div.onclick = () => {
+      if (
+        !f.geometry || !Array.isArray(f.geometry.coordinates) || f.geometry.coordinates.length < 2
+      ) return;
+
       const [lng, lat] = f.geometry.coordinates;
-      map.setView([lat, lng], 12);
-      L.popup().setLatLng([lat, lng]).setContent(makePopupContent(p)).openOn(map);
+
+      // Open popup directly — Leaflet's autoPan will shift the map
+      // just enough to fit the popup in view, without centering first
+      L.popup()
+        .setLatLng([lat, lng])
+        .setContent(makePopupContent(p))
+        .openOn(map);
     };
+
     list.appendChild(div);
   });
 }
@@ -428,7 +659,8 @@ function applyFilters() {
     // Get selected values from Choices (guard if they don't exist)
     const selectedCommunities = window.communityChoices ? communityChoices.getValue(true) : [];
     const selectedOrgs = window.orgChoices ? orgChoices.getValue(true) : [];
-    const selectedTopics = window.topicChoices ? topicChoices.getValue(true) : [];
+    const selectedFoodSources = window.foodSourceChoices ? foodSourceChoices.getValue(true) : [];
+    const selectedInitiativeTypes = window.initiativeTypeChoices ? initiativeTypeChoices.getValue(true) : [];
     const selectedTitles = window.titleChoices ? titleChoices.getValue(true) : [];
 
     // Filter allFeatures according to search + selections
@@ -439,22 +671,52 @@ function applyFilters() {
       const matchesSearch = !search ||
         (p.Title && p.Title.toLowerCase().includes(search)) ||
         (p.Affiliation && p.Affiliation.toLowerCase().includes(search)) ||
-        (p.Community && p.Community.toLowerCase().includes(search));
+        (p.Location && p.Location.toLowerCase().includes(search));
 
-      const matchesCommunity = !selectedCommunities.length || selectedCommunities.includes(p.Community);
-      const matchesOrg = !selectedOrgs.length || selectedOrgs.includes(p.Affiliation);
-      const matchesTopic = !selectedTopics.length || selectedTopics.includes(p.Topic);
+      const matchesCommunity = !selectedCommunities.length || selectedCommunities.includes(p.Location);
       const matchesTitle = !selectedTitles.length || selectedTitles.includes(p.Title);
+      const featureOrgs = splitValues(p.Affiliation);
+      const featureFoodSources = splitValues(p.Food_Source);
+      const featureInitiativeTypes = splitValues(p.Initiative_Type);
 
-      return matchesSearch && matchesCommunity && matchesOrg && matchesTopic && matchesTitle;
+      const matchesOrg =
+        !selectedOrgs.length ||
+        selectedOrgs.some(val => featureOrgs.includes(val));
+
+      const matchesFoodSource =
+        !selectedFoodSources.length ||
+        selectedFoodSources.some(val => featureFoodSources.includes(val));
+
+      const matchesInitiativeType =
+        !selectedInitiativeTypes.length ||
+        selectedInitiativeTypes.some(val => featureInitiativeTypes.includes(val));
+
+
+      return matchesSearch && matchesCommunity && matchesOrg && matchesFoodSource && matchesInitiativeType && matchesTitle;
     });
 
     // Update markers: clear and add filtered markers
     markers.clearLayers();
     filteredFeatures.forEach(f => {
-      if (!f.geometry || !Array.isArray(f.geometry.coordinates)) return;
+      if (
+        !f.geometry ||
+        !Array.isArray(f.geometry.coordinates) ||
+        f.geometry.coordinates.length < 2
+      ) return;
+
       const [lng, lat] = f.geometry.coordinates;
-      const marker = L.marker([lat, lng]).bindPopup(makePopupContent(f.properties));
+
+      const marker = L.marker([lat, lng]).bindPopup(makePopupContent(f.properties), {
+        // Disable autoPan on open, then manually pan once popup dimensions are known
+        autoPan: false
+      });
+
+      marker.on("popupopen", (e) => {
+        const px = map.project(e.popup.getLatLng());
+        px.y -= e.popup.getElement().clientHeight / 2;
+        map.panTo(map.unproject(px), { animate: true });
+      });
+
       markers.addLayer(marker);
     });
 
@@ -476,7 +738,7 @@ function applyFilters() {
 function getFeaturesInView(features) {
   const bounds = map.getBounds();
   return features.filter(f => {
-    if (!f.geometry || !Array.isArray(f.geometry.coordinates)) return false;
+    if ( !f.geometry || !Array.isArray(f.geometry.coordinates) || f.geometry.coordinates.length < 2) return false;
     const [lng, lat] = f.geometry.coordinates;
     return bounds.contains([lat, lng]);
   });
@@ -506,7 +768,8 @@ document.getElementById("resetAll").addEventListener("click", () => {
     // Clear Choices.js selections (guarded)
     if (window.communityChoices) communityChoices.removeActiveItems();
     if (window.orgChoices) orgChoices.removeActiveItems();
-    if (window.topicChoices) topicChoices.removeActiveItems();
+    if (window.foodSourceChoices) foodSourceChoices.removeActiveItems();
+    if (window.initiativeTypeChoices) initiativeTypeChoices.removeActiveItems();
     if (window.titleChoices) titleChoices.removeActiveItems();
 
     // Re-run filter pipeline (will repopulate markers and sidebar)
@@ -515,10 +778,6 @@ document.getElementById("resetAll").addEventListener("click", () => {
     console.error("resetAll error:", err);
   }
 });
-
-
-/* Search input listener */
-document.getElementById("search").addEventListener("input", applyFilters);
 
 /* ========== MAIN INITIALIZATION ========== */
 (async () => {
@@ -532,41 +791,48 @@ document.getElementById("search").addEventListener("input", applyFilters);
     if (searchInput) searchInput.addEventListener("input", applyFilters);
 
     // listen for Choices change via the <select> 'change' events (Choices triggers native change)
-    ["filterCommunity","filterOrg","filterTopic","filterTitle"].forEach(id => {
+    ["filterCommunity","filterOrg","filterFoodSource","filterInitiativeType","filterTitle"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener("change", applyFilters);
     });
 
-    // Add initial markers
-    allFeatures.forEach(f => {
-      if (f.geometry) {
-        const [lng, lat] = f.geometry.coordinates;
-        const marker = L.marker([lat, lng]).bindPopup(makePopupContent(f.properties));
-        markers.addLayer(marker);
-      }
+    applyFilters(); // initial render
+
+    // Sidebar toggle
+    const sidebar = document.getElementById("sidebar");
+    const toggleSidebarBtn = document.getElementById("toggleSidebarBtn");
+    let sidebarVisible = true;
+
+    toggleSidebarBtn.addEventListener("click", () => {
+      sidebarVisible = !sidebarVisible;
+      sidebar.style.zIndex = sidebarVisible ? "900" : "500";
+      toggleSidebarBtn.textContent = sidebarVisible ? "Hide sidebar" : "Show sidebar";
     });
 
-    map.addLayer(markers);
-    renderSidebar(allFeatures);
+    // ====== INFO MODAL: open on load, toggle on button click ======
+    const infoModal = document.getElementById("infoModal");
+    const infoBtn = document.getElementById("infoBtn");
+    const infoModalClose = document.getElementById("infoModalClose");
 
-    // Listen for filter changes
-    ["filterCommunity", "filterOrg", "filterTopic", "filterTitle"].forEach(id => {
-      document.getElementById(id).addEventListener("change", applyFilters);
+    // Open automatically when map first loads
+    infoModal.classList.add("open");
+
+    // Close when X is clicked
+    infoModalClose.addEventListener("click", () => infoModal.classList.remove("open"));
+
+    // Close when clicking the dark overlay outside the box
+    infoModal.addEventListener("click", (e) => {
+      if (e.target === infoModal) infoModal.classList.remove("open");
     });
+
+    // Re-open when info button is clicked
+    infoBtn.addEventListener("click", () => infoModal.classList.add("open"));
 
   } catch (err) {
     console.error(err);
     alert("Error loading features. See console for details.");
   }
 })();
-    const sidebar = document.getElementById("sidebar");
-    const toggleSidebarBtn = document.getElementById("toggleSidebarBtn");
-
-    toggleSidebarBtn.addEventListener("click", () => {
-    const isHidden = sidebar.style.zIndex == "500"; // same as map
-    sidebar.style.zIndex = isHidden ? "1000" : "500"; // in front or behind
-    toggleSidebarBtn.textContent = isHidden ? "Hide sidebar" : "Show sidebar";
-});
 
 </script>
 
