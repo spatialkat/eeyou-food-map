@@ -439,8 +439,8 @@
 
 <script>
 /* ===================== CONFIG ===================== */
-const GEOJSON_FILE = "Food_Security_Initiatives_Clean.geojson"; // Local file path
-const COMMUNITY_OUTLINE = "Community_Extent.geojson"; // Local file path
+const GEOJSON_FILE = "Eeyou_Istchee_Food_Initiatives_V3.geojson"; // Local file path
+const COMMUNITY_OUTLINE = "https://services.arcgis.com/fO9dpWgx6NUI1EWc/ArcGIS/rest/services/Community_Extent/FeatureServer/1/query?where=1%3D1&outFields=*&f=geojson&outSR=4326";
 const MAP_START = { lat: 53.5, lng: -78.5, zoom: 6 };     // Eeyou Istchee area
 /* ===================== END CONFIG ===================== */
 
@@ -461,7 +461,7 @@ fetch(COMMUNITY_OUTLINE)
   .then(data => {
     // Make sure property name matches exactly what's in your file
     const outlineFeatures = data.features.filter(
-      f => f.properties.COMMUNITY && f.properties.COMMUNITY !== "Eeyou Istchee"
+      f => f.properties.COMUNITY && f.properties.COMUNITY !== "Eeyou Istchee"
     );
 
     const filteredData = { ...data, features: outlineFeatures };
@@ -473,7 +473,7 @@ fetch(COMMUNITY_OUTLINE)
         fillOpacity: 0
       },
       onEachFeature: (feature, layer) => {
-        const name = feature.properties.COMMUNITY || "Unnamed";
+        const name = feature.properties.COMUNITY || "Unnamed";
 
         // Tooltip on hover
         layer.bindTooltip(name, {
